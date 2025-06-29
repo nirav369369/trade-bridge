@@ -1,4 +1,4 @@
-﻿import requests
+import requests
 import time
 import hmac
 import hashlib
@@ -25,15 +25,15 @@ class BinanceClient:
         response = self.session.get(self.BASE_URL + endpoint, params=signed_params)
         data = response.json()
 
-        positions = {}
+        positions = []
         for pos in data:
-            symbol = pos["symbol"]
             qty = float(pos["positionAmt"])
             if qty != 0:
-                positions[symbol] = {
+                positions.append({
+                    "symbol": pos["symbol"],
                     "positionSide": pos["positionSide"],
                     "quantity": abs(qty)
-                }
+                })
         return positions
 
     def get_account_info(self):
