@@ -26,22 +26,28 @@ class BinanceClient:
         data = response.json()
 
         positions = {}
-        if isinstance(data, list):
-            for pos in data:
-                symbol = pos.get("symbol")
-                qty = float(pos.get("positionAmt", 0))
-                if qty != 0:
-                    positions[symbol] = {
-                        "quantity": abs(qty),
-                        "positionSide": pos.get("positionSide", "BOTH")
-                    }
+        for pos in data:
+            symbol = pos["symbol"]
+            qty = float(pos["positionAmt"])
+            if qty != 0:
+                positions[symbol] = {
+                    "positionSide": pos["positionSide"],
+                    "quantity": abs(qty)
+                }
         return positions
+
+    def get_account_info(self):
+        endpoint = "/fapi/v2/account"
+        params = {"timestamp": int(time.time() * 1000)}
+        signed_params = self._sign(params)
+        response = self.session.get(self.BASE_URL + endpoint, params=signed_params)
+        return response.json()
 
     def get_price(self, symbol):
         endpoint = "/fapi/v1/premiumIndex"
         params = {"symbol": symbol}
         response = self.session.get(self.BASE_URL + endpoint, params=params)
-        return float(response.json().get("markPrice", 0))
+        return float(response.json()["markPrice"])
 
     def place_market_order(self, symbol, side, quantity):
         endpoint = "/fapi/v1/order"
