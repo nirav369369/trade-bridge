@@ -23,17 +23,30 @@ class BinanceClient:
         params = {"timestamp": int(time.time() * 1000)}
         signed_params = self._sign(params)
         response = self.session.get(self.BASE_URL + endpoint, params=signed_params)
-        data = response.json()
+        
+        try:
+            data = response.json()
+        except Exception as e:
+            print("❌ Failed to parse Binance positions:", e)
+            print("❌ Raw response text:", response.text)
+            return {}
 
         positions = {}
-        for pos in data:
-            symbol = pos["symbol"]
-            qty = float(pos["positionAmt"])
-            if qty != 0:
-                positions[symbol] = {
-                    "positionSide": pos["positionSide"],
-                    "quantity": abs(qty)
-                }
+        if isinstance(data, list):
+            for pos in data:
+                try:
+                    symbol = pos["symbol"]
+                    qty = float(pos["positionAmt"])
+                    if qty != 0:
+                        positions[symbol] = {
+                            "positionSide": pos.get("positionSide", "UNKNOWN"),
+                            "quantity": abs(qty)
+                        }
+                except Exception as e:
+                    print(f"⚠️ Skipped invalid Binance position: {pos} | Error: {e}")
+        else:
+            print("⚠️ Unexpected Binance response structure:", data)
+
         return positions
 
     def get_account_info(self):
