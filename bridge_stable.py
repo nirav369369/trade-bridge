@@ -7,7 +7,8 @@ logging.basicConfig(level=logging.INFO)
 
 # Initialize clients
 
-binance = BinanceClient() bingx = BingXClient()
+binance = BinanceClient() 
+bingx = BingXClient()
 
 Symbol mapping: BingX symbol => Binance symbol
 
