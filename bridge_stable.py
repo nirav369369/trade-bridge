@@ -24,7 +24,9 @@ SYMBOL_MAP = {
 
 # Retry tracker to prevent repeated margin errors
 
-retry_tracker = {} MAX_RETRIES = 3 RETRY_DELAY = 300  # in seconds
+retry_tracker = {}
+MAX_RETRIES = 3
+RETRY_DELAY = 300  # in seconds
 
 def can_retry(symbol): retry_data = retry_tracker.get(symbol) if not retry_data: return True if retry_data['count'] >= MAX_RETRIES: if time.time() - retry_data['last_attempt'] > RETRY_DELAY: retry_tracker[symbol] = {'count': 0, 'last_attempt': 0} return True return False return True
 
