@@ -1,0 +1,56 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Binance ↔ BingX Bridge</title>
+</head>
+<body>
+  <h1>🔁 Binance-BingX Bridge Status</h1>
+  <p id="status">Loading status...</p>
+
+  <h2>📦 Positions</h2>
+  <pre id="positions">Loading positions...</pre>
+
+  <button onclick="syncNow()">🔁 Sync Now</button>
+  <p id="sync-result"></p>
+
+  <script>
+    function loadStatus() {
+      fetch("http://127.0.0.1:5000/status")
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("status").textContent = data.status;
+        })
+        .catch(err => {
+          document.getElementById("status").textContent = "❌ Error connecting to bridge.";
+        });
+    }
+
+    function loadPositions() {
+      fetch("http://127.0.0.1:5000/positions")
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("positions").textContent = JSON.stringify(data, null, 2);
+        })
+        .catch(err => {
+          document.getElementById("positions").textContent = "❌ Failed to load positions.";
+        });
+    }
+
+    function syncNow() {
+      fetch("http://127.0.0.1:5000/sync", { method: "POST" })
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("sync-result").textContent = data.message;
+          loadPositions(); // Refresh positions after sync
+        })
+        .catch(err => {
+          document.getElementById("sync-result").textContent = "❌ Sync failed.";
+        });
+    }
+
+    loadStatus();
+    loadPositions();
+  </script>
+</body>
+</html>
