@@ -23,30 +23,26 @@ class BinanceClient:
         params = {"timestamp": int(time.time() * 1000)}
         signed_params = self._sign(params)
         response = self.session.get(self.BASE_URL + endpoint, params=signed_params)
-        
+
         try:
             data = response.json()
-        except Exception as e:
-            print("❌ Failed to parse Binance positions:", e)
-            print("❌ Raw response text:", response.text)
+        except Exception:
+            print("❌ Binance get_positions(): Invalid JSON:", response.text)
+            return {}
+
+        if not isinstance(data, list):
+            print("❌ Binance get_positions(): Expected list, got:", data)
             return {}
 
         positions = {}
-        if isinstance(data, list):
-            for pos in data:
-                try:
-                    symbol = pos["symbol"]
-                    qty = float(pos["positionAmt"])
-                    if qty != 0:
-                        positions[symbol] = {
-                            "positionSide": pos.get("positionSide", "UNKNOWN"),
-                            "quantity": abs(qty)
-                        }
-                except Exception as e:
-                    print(f"⚠️ Skipped invalid Binance position: {pos} | Error: {e}")
-        else:
-            print("⚠️ Unexpected Binance response structure:", data)
-
+        for pos in data:
+            symbol = pos.get("symbol")
+            qty = float(pos.get("positionAmt", 0))
+            if qty != 0:
+                positions[symbol] = {
+                    "positionSide": pos.get("positionSide", "BOTH"),
+                    "quantity": abs(qty)
+                }
         return positions
 
     def get_account_info(self):
@@ -60,7 +56,11 @@ class BinanceClient:
         endpoint = "/fapi/v1/premiumIndex"
         params = {"symbol": symbol}
         response = self.session.get(self.BASE_URL + endpoint, params=params)
-        return float(response.json()["markPrice"])
+        try:
+            return float(response.json()["markPrice"])
+        except Exception:
+            print(f"❌ get_price() failed for {symbol}: {response.text}")
+            raise
 
     def place_market_order(self, symbol, side, quantity):
         endpoint = "/fapi/v1/order"
