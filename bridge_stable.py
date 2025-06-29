@@ -39,7 +39,11 @@ def can_retry(symbol):
         return False
     return True
 
-def record_retry(symbol): data = retry_tracker.get(symbol, {'count': 0, 'last_attempt': 0}) data['count'] += 1 data['last_attempt'] = time.time() retry_tracker[symbol] = data
+def record_retry(symbol):
+    data = retry_tracker.get(symbol, {'count': 0, 'last_attempt': 0})
+    data['count'] += 1
+    data['last_attempt'] = time.time()
+    retry_tracker[symbol] = data
 
 def main(): while True: try: # Step 1: Fetch positions bingx_positions = bingx.get_positions() binance_positions = binance.get_positions()
 
