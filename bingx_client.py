@@ -25,14 +25,14 @@ class BingXClient:
         response = self.session.get(self.BASE_URL + endpoint, params=signed_params)
         data = response.json()
 
-        positions = []
+        positions = {}
         if data.get("code") == 0:
-            for pos in data["data"]:
-                qty = float(pos["positionAmt"])
+            for pos in data.get("data", []):
+                symbol = pos.get("symbol")
+                qty = float(pos.get("positionAmt", 0))
                 if qty != 0:
-                    positions.append({
-                        "symbol": pos["symbol"],
-                        "positionSide": pos["positionSide"],
-                        "quantity": abs(qty)
-                    })
+                    positions[symbol] = {
+                        "quantity": abs(qty),
+                        "positionSide": pos.get("positionSide", "BOTH")
+                    }
         return positions
