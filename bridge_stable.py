@@ -4,9 +4,10 @@ from binance_client import BinanceClient
 from bingx_client import BingXClient
 from binance_symbol_rules import adjust_quantity
 
+# Setup logging
 logging.basicConfig(level=logging.INFO)
 
-# Initialize clients
+# Initialize API clients
 binance = BinanceClient()
 bingx = BingXClient()
 
@@ -19,13 +20,12 @@ SYMBOL_MAP = {
     'ADA-USDT': 'ADAUSDT',
     'DOT-USDT': 'DOTUSDT',
     'ONDO-USDT': 'ONDOUSDT'
-    # Add more if needed
 }
 
-# Retry tracker to prevent repeated margin errors
+# Retry mechanism
 retry_tracker = {}
 MAX_RETRIES = 3
-RETRY_DELAY = 300  # in seconds
+RETRY_DELAY = 300  # seconds
 
 def can_retry(symbol):
     retry_data = retry_tracker.get(symbol)
@@ -51,27 +51,34 @@ def main():
             bingx_positions = bingx.get_positions()
             binance_positions = binance.get_positions()
 
-            logging.info("🔍 BingX Raw: %s", bingx_positions)
-            logging.info("🔍 Binance Raw: %s", binance_positions)
+            logging.info("🔍 Raw BingX Positions: %s", bingx_positions)
+            logging.info("🔍 Raw Binance Positions: %s", binance_positions)
 
-            # Convert to dict if needed
-            if isinstance(bingx_positions, list):
-                bingx_positions = {pos["symbol"]: pos for pos in bingx_positions}
-            if isinstance(binance_positions, list):
-                binance_positions = {pos["symbol"]: pos for pos in binance_positions}
+            # Step 2: Validate and convert to dict
+            if isinstance(bingx_positions, list) and all(isinstance(p, dict) for p in bingx_positions):
+                bingx_positions = {p['symbol']: p for p in bingx_positions}
+            else:
+                logging.error("❌ Unexpected format in bingx_positions: %s", bingx_positions)
+                time.sleep(5)
+                continue
 
-            logging.info("📊 Binance Positions: %s", binance_positions)
-            logging.info("📊 BingX Positions: %s", bingx_positions)
+            if isinstance(binance_positions, list) and all(isinstance(p, dict) for p in binance_positions):
+                binance_positions = {p['symbol']: p for p in binance_positions}
+            else:
+                logging.error("❌ Unexpected format in binance_positions: %s", binance_positions)
+                time.sleep(5)
+                continue
 
+            # Step 3: Sync positions
             for bingx_symbol, bingx_pos in bingx_positions.items():
                 binance_symbol = SYMBOL_MAP.get(bingx_symbol)
                 if not binance_symbol:
-                    logging.warning("❌ Symbol not mapped: %s", bingx_symbol)
+                    logging.warning("⚠️ Symbol not mapped: %s", bingx_symbol)
                     continue
 
-                desired_qty = float(bingx_pos["quantity"])
-                current_binance_qty = float(binance_positions.get(binance_symbol, {}).get("quantity", 0))
-                delta = round(desired_qty - current_binance_qty, 8)
+                desired_qty = float(bingx_pos.get("quantity", 0))
+                current_qty = float(binance_positions.get(binance_symbol, {}).get("quantity", 0))
+                delta = round(desired_qty - current_qty, 8)
 
                 if abs(delta) < 0.001:
                     continue  # No action needed
@@ -83,23 +90,23 @@ def main():
                 price = binance.get_price(binance_symbol)
                 notional = float(price) * adjusted_qty
                 if notional < 5:
-                    logging.warning("❌ Order notional < 5 USDT: %s (qty: %s @ price: %s)", notional, adjusted_qty, price)
+                    logging.warning("❌ Notional < 5 USDT: %s (qty: %s @ %s)", notional, adjusted_qty, price)
                     continue
 
                 if not can_retry(binance_symbol):
-                    logging.info("⏸ Skipping %s due to recent margin errors.", binance_symbol)
+                    logging.info("⏸ Skipping %s due to retry limit.", binance_symbol)
                     continue
 
-                logging.info("✅ Mirroring => %s | %s | Qty: %s", binance_symbol, side, adjusted_qty)
+                logging.info("✅ Placing order: %s %s Qty: %s", binance_symbol, side, adjusted_qty)
                 response = binance.place_market_order(binance_symbol, side, adjusted_qty)
                 logging.info("🧾 Order response: %s", response)
 
-                if isinstance(response, dict) and response.get('code') == -2019:
+                if isinstance(response, dict) and response.get("code") == -2019:
                     record_retry(binance_symbol)
 
         except Exception as e:
             logging.error("🔥 Error in bridge loop: %s", e)
-        
+
         time.sleep(5)
 
 if __name__ == "__main__":
