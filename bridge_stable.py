@@ -45,7 +45,18 @@ def record_retry(symbol):
     data['last_attempt'] = time.time()
     retry_tracker[symbol] = data
 
-def main(): while True: try: # Step 1: Fetch positions bingx_positions = bingx.get_positions() binance_positions = binance.get_positions()
+def main():
+    while True:
+        try:
+            # Step 1: Fetch positions
+            bingx_positions = bingx.get_positions()
+            binance_positions = binance.get_positions()
+
+            # ... rest of your logic here ...
+
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            time.sleep(5)
 
 logging.info("🔍 BingX Raw: %s", bingx_positions)
         logging.info("🔍 Binance Raw: %s", binance_positions)
