@@ -1,12 +1,12 @@
 ﻿# config.py
 
 # ✅ Binance API Keys
-BINANCE_API_KEY = "Ufbg9TKjd0Z3GG6I82zhE26x9WDU83pXCdwxKCR0BNHXm8wAY5BBlbYckS2eR2Ya"
-BINANCE_API_SECRET = "e5giUNSU1JBvvfwM5UmkNUsepJ7u4ZGAAuW8HfUHHKvhRCekq2l09hUYM5F3kYLy"
+BINANCE_API_KEY = "your_key"
+BINANCE_API_SECRET = "your_key"
 
 # ✅ BingX API Keys
-BINGX_API_KEY = "NortAFqrEbvmrdHmG3B3x8RZ716KuhBqOydjOvZgy5252w3zg0eUDXzMErdpvcHjYDvAcVxyI2i7hiKiO2oA"
-BINGX_API_SECRET = "Sr86wOsMlbgkFmDimBcOVkzXjLKEbggeKZoYQBvM7V6M6wLhXkvGoSDkVxaZDYMLv0cLu42dpaf5r1vhLAFg"
+BINGX_API_KEY = "your_key"
+BINGX_API_SECRET = "your_key"
 
 # ✅ Binance Symbol Mapping (no dashes)
 BINANCE_SYMBOL_MAP = {
