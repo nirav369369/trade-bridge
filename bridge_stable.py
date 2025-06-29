@@ -11,8 +11,16 @@ binance = BinanceClient()
 bingx = BingXClient()
 
 # Symbol mapping: BingX symbol => Binance symbol
-
-SYMBOL_MAP = { 'BTC-USDT': 'BTCUSDT', 'ETH-USDT': 'ETHUSDT', 'BNB-USDT': 'BNBUSDT', 'SOL-USDT': 'SOLUSDT', 'ADA-USDT': 'ADAUSDT', 'DOT-USDT': 'DOTUSDT', 'ONDO-USDT': 'ONDOUSDT' # Add more if needed }
+SYMBOL_MAP = {
+    'BTC-USDT': 'BTCUSDT',
+    'ETH-USDT': 'ETHUSDT',
+    'BNB-USDT': 'BNBUSDT',
+    'SOL-USDT': 'SOLUSDT',
+    'ADA-USDT': 'ADAUSDT',
+    'DOT-USDT': 'DOTUSDT',
+    'ONDO-USDT': 'ONDOUSDT'
+    # Add more if needed
+}
 
 Retry tracker to prevent repeated margin errors
 
