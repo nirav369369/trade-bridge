@@ -23,29 +23,16 @@ class BingXClient:
         params = {"timestamp": int(time.time() * 1000)}
         signed_params = self._sign(params)
         response = self.session.get(self.BASE_URL + endpoint, params=signed_params)
-
-        try:
-            data = response.json()
-        except Exception as e:
-            print("❌ Failed to parse BingX response:", e)
-            print("❌ Raw response text:", response.text)
-            return {}
+        data = response.json()
 
         positions = {}
-
         if data.get("code") == 0 and isinstance(data.get("data"), list):
             for pos in data["data"]:
-                try:
-                    symbol = pos["symbol"]
-                    qty = float(pos["positionAmt"])
-                    if qty != 0:
-                        positions[symbol] = {
-                            "positionSide": pos.get("positionSide", "UNKNOWN"),
-                            "quantity": abs(qty)
-                        }
-                except Exception as e:
-                    print(f"⚠️ Skipped invalid entry in BingX data: {pos} | Error: {e}")
-        else:
-            print("⚠️ Unexpected structure in BingX response:", data)
-
+                symbol = pos.get("symbol")
+                qty = float(pos.get("positionAmt", 0))
+                if qty != 0:
+                    positions[symbol] = {
+                        "positionSide": pos.get("positionSide", "BOTH"),
+                        "quantity": abs(qty)
+                    }
         return positions
