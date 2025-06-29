@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import time
 
 from binance_client import BinanceClient
@@ -56,15 +56,25 @@ def main():
             logging.info("📊 Binance Positions: %s", binance_positions)
             logging.info("📊 BingX Positions: %s", bingx_positions)
 
+            # Validate bingx_positions is a dict
+            if not isinstance(bingx_positions, dict):
+                logging.error("❌ Invalid format for BingX positions: %s", bingx_positions)
+                time.sleep(5)
+                continue
+
             for bingx_symbol, bingx_pos in bingx_positions.items():
                 binance_symbol = SYMBOL_MAP.get(bingx_symbol)
                 if not binance_symbol:
                     logging.warning("❌ Symbol not mapped: %s", bingx_symbol)
                     continue
 
-                desired_qty = float(bingx_pos["quantity"])
-                current_binance_qty = float(binance_positions.get(binance_symbol, {}).get("quantity", 0))
+                try:
+                    desired_qty = float(bingx_pos["quantity"])
+                except (KeyError, ValueError, TypeError):
+                    logging.error("❌ Invalid quantity for symbol %s: %s", bingx_symbol, bingx_pos)
+                    continue
 
+                current_binance_qty = float(binance_positions.get(binance_symbol, {}).get("quantity", 0))
                 delta = round(desired_qty - current_binance_qty, 8)
 
                 if abs(delta) < 0.001:
