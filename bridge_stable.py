@@ -5,7 +5,7 @@ from bingx_client import BingXClient
 from binance_symbol_rules import adjust_quantity
 logging.basicConfig(level=logging.INFO)
 
-Initialize clients
+# Initialize clients
 
 binance = BinanceClient() bingx = BingXClient()
 
