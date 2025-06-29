@@ -27,12 +27,12 @@ class BingXClient:
 
         positions = {}
         if data.get("code") == 0:
-            for pos in data.get("data", []):
-                symbol = pos.get("symbol")
-                qty = float(pos.get("positionAmt", 0))
+            for pos in data["data"]:
+                symbol = pos["symbol"]
+                qty = float(pos["positionAmt"])
                 if qty != 0:
                     positions[symbol] = {
-                        "quantity": abs(qty),
-                        "positionSide": pos.get("positionSide", "BOTH")
+                        "positionSide": pos["positionSide"],
+                        "quantity": abs(qty)
                     }
         return positions
