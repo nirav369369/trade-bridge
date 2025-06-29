@@ -1,116 +1,96 @@
-import logging
-import time
+import logging import time
 
-from binance_client import BinanceClient
-from bingx_client import BingXClient
-from binance_symbol_rules import adjust_quantity
+from binance_client import BinanceClient from bingx_client import BingXClient from binance_symbol_rules import adjust_quantity
 
 logging.basicConfig(level=logging.INFO)
 
-# Initialize clients
-binance = BinanceClient()
-bingx = BingXClient()
+Initialize clients
 
-# Symbol mapping: BingX symbol => Binance symbol
-SYMBOL_MAP = {
-    'BTC-USDT': 'BTCUSDT',
-    'ETH-USDT': 'ETHUSDT',
-    'BNB-USDT': 'BNBUSDT',
-    'SOL-USDT': 'SOLUSDT',
-    'ADA-USDT': 'ADAUSDT',
-    'DOT-USDT': 'DOTUSDT',
-    'ONDO-USDT': 'ONDOUSDT'
-    # Add more if needed
-}
+binance = BinanceClient() bingx = BingXClient()
 
-# Retry tracker to avoid infinite margin errors
-retry_tracker = {}
-MAX_RETRIES = 3
-RETRY_DELAY = 300  # seconds (5 minutes)
+Symbol mapping: BingX symbol => Binance symbol
 
-def can_retry(symbol):
-    retry_data = retry_tracker.get(symbol)
-    if not retry_data:
-        return True
-    if retry_data['count'] >= MAX_RETRIES:
-        if time.time() - retry_data['last_attempt'] > RETRY_DELAY:
-            retry_tracker[symbol] = {'count': 0, 'last_attempt': 0}
-            return True
-        return False
-    return True
+SYMBOL_MAP = { 'BTC-USDT': 'BTCUSDT', 'ETH-USDT': 'ETHUSDT', 'BNB-USDT': 'BNBUSDT', 'SOL-USDT': 'SOLUSDT', 'ADA-USDT': 'ADAUSDT', 'DOT-USDT': 'DOTUSDT', 'ONDO-USDT': 'ONDOUSDT' # Add more if needed }
 
-def record_retry(symbol):
-    data = retry_tracker.get(symbol, {'count': 0, 'last_attempt': 0})
-    data['count'] += 1
-    data['last_attempt'] = time.time()
-    retry_tracker[symbol] = data
+Retry tracker to avoid infinite margin errors
 
-def main():
-    while True:
-        try:
-            # Step 1: Get positions
-            bingx_positions = bingx.get_positions()
-            binance_positions = binance.get_positions()
-            account_info = binance.get_account_info()
+retry_tracker = {} MAX_RETRIES = 3 RETRY_DELAY = 300  # seconds (5 minutes)
 
-            logging.info("📊 Binance Positions: %s", binance_positions)
-            logging.info("📊 BingX Positions: %s", bingx_positions)
+def can_retry(symbol): retry_data = retry_tracker.get(symbol) if not retry_data: return True if retry_data['count'] >= MAX_RETRIES: if time.time() - retry_data['last_attempt'] > RETRY_DELAY: retry_tracker[symbol] = {'count': 0, 'last_attempt': 0} return True return False return True
 
-            # Validate bingx_positions is a dict
-            if not isinstance(bingx_positions, dict):
-                logging.error("❌ Invalid format for BingX positions: %s", bingx_positions)
-                time.sleep(5)
+def record_retry(symbol): data = retry_tracker.get(symbol, {'count': 0, 'last_attempt': 0}) data['count'] += 1 data['last_attempt'] = time.time() retry_tracker[symbol] = data
+
+def main(): while True: try: # Step 1: Get positions bingx_positions = bingx.get_positions() if not isinstance(bingx_positions, dict): logging.error("❌ Invalid format for BingX positions: %s", bingx_positions) time.sleep(5) continue
+
+binance_positions = binance.get_positions()
+        if not isinstance(binance_positions, dict):
+            logging.error("❌ Invalid format for Binance positions: %s", binance_positions)
+            time.sleep(5)
+            continue
+
+        account_info = binance.get_account_info()
+
+        logging.info("📊 Binance Positions: %s", binance_positions)
+        logging.info("📊 BingX Positions: %s", bingx_positions)
+
+        for bingx_symbol, bingx_pos in bingx_positions.items():
+            binance_symbol = SYMBOL_MAP.get(bingx_symbol)
+            if not binance_symbol:
+                logging.warning("❌ Symbol not mapped: %s", bingx_symbol)
                 continue
 
-            for bingx_symbol, bingx_pos in bingx_positions.items():
-                binance_symbol = SYMBOL_MAP.get(bingx_symbol)
-                if not binance_symbol:
-                    logging.warning("❌ Symbol not mapped: %s", bingx_symbol)
-                    continue
+            try:
+                desired_qty = float(bingx_pos.get("quantity", 0))
+            except (KeyError, ValueError, TypeError):
+                logging.error("❌ Invalid quantity for symbol %s: %s", bingx_symbol, bingx_pos)
+                continue
 
-                try:
-                    desired_qty = float(bingx_pos["quantity"])
-                except (KeyError, ValueError, TypeError):
-                    logging.error("❌ Invalid quantity for symbol %s: %s", bingx_symbol, bingx_pos)
-                    continue
-
+            try:
                 current_binance_qty = float(binance_positions.get(binance_symbol, {}).get("quantity", 0))
-                delta = round(desired_qty - current_binance_qty, 8)
+            except (ValueError, TypeError):
+                logging.error("❌ Invalid current Binance quantity for symbol %s: %s", binance_symbol, binance_positions.get(binance_symbol))
+                continue
 
-                if abs(delta) < 0.001:
-                    continue  # Ignore tiny difference
+            delta = round(desired_qty - current_binance_qty, 8)
 
-                side = "BUY" if delta > 0 else "SELL"
-                qty = abs(delta)
+            if abs(delta) < 0.001:
+                continue  # Ignore tiny difference
 
-                # Step 2: Adjust quantity to symbol precision
-                adjusted_qty = adjust_quantity(binance_symbol, qty)
+            side = "BUY" if delta > 0 else "SELL"
+            qty = abs(delta)
 
-                # Step 3: Check notional (price × qty) >= 5
+            # Step 2: Adjust quantity to symbol precision
+            adjusted_qty = adjust_quantity(binance_symbol, qty)
+
+            # Step 3: Check notional (price × qty) >= 5
+            try:
                 price = binance.get_price(binance_symbol)
                 notional = float(price) * adjusted_qty
-                if notional < 5:
-                    logging.warning("❌ Order notional < 5 USDT: %s (qty: %s @ price: %s)", notional, adjusted_qty, price)
-                    continue
+            except Exception as e:
+                logging.error("❌ Failed to get price for %s: %s", binance_symbol, e)
+                continue
 
-                # Step 4: Retry handling
-                if not can_retry(binance_symbol):
-                    logging.info("⏸ Skipping %s due to recent margin errors.", binance_symbol)
-                    continue
+            if notional < 5:
+                logging.warning("❌ Order notional < 5 USDT: %s (qty: %s @ price: %s)", notional, adjusted_qty, price)
+                continue
 
-                # Step 5: Place market order
-                logging.info("✅ Mirroring => %s | %s | Qty: %s", binance_symbol, side, adjusted_qty)
-                response = binance.place_market_order(binance_symbol, side, adjusted_qty)
-                logging.info("🧾 Order response: %s", response)
+            # Step 4: Retry handling
+            if not can_retry(binance_symbol):
+                logging.info("⏸ Skipping %s due to recent margin errors.", binance_symbol)
+                continue
 
-                # Step 6: Check for insufficient margin
-                if isinstance(response, dict) and response.get('code') == -2019:
-                    record_retry(binance_symbol)
+            # Step 5: Place market order
+            logging.info("✅ Mirroring => %s | %s | Qty: %s", binance_symbol, side, adjusted_qty)
+            response = binance.place_market_order(binance_symbol, side, adjusted_qty)
+            logging.info("🧾 Order response: %s", response)
 
-        except Exception as e:
-            logging.error("🔥 Error in bridge loop: %s", e)
+            # Step 6: Check for insufficient margin
+            if isinstance(response, dict) and response.get('code') == -2019:
+                record_retry(binance_symbol)
 
-        time.sleep(5)
+    except Exception as e:
+        logging.exception("🔥 Error in bridge loop")
 
-if __name__ == "__main__":
-    main()
+    time.sleep(5)
+
+if name == "main": main()
