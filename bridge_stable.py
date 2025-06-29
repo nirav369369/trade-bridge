@@ -22,7 +22,7 @@ SYMBOL_MAP = {
     # Add more if needed
 }
 
-Retry tracker to prevent repeated margin errors
+# Retry tracker to prevent repeated margin errors
 
 retry_tracker = {} MAX_RETRIES = 3 RETRY_DELAY = 300  # in seconds
 
